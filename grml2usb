@@ -99,9 +99,9 @@ parser.add_argument(
     "--dry-run", dest="dryrun", action="store_true", help="avoid executing commands"
 )
 parser.add_argument(
-    "--fat16",
+    "--format",
     action="store_true",
-    help="format specified partition with FAT16",
+    help="format specified partition as vfat",
 )
 parser.add_argument(
     "--force",
@@ -513,19 +513,19 @@ def check_boot_flag(device):
         )
 
 
-def mkfs_fat16(device):
-    """Format specified device with VFAT/FAT16 filesystem.
+def mkfs_vfat(device):
+    """Format specified device with VFAT filesystem.
 
     @device: partition that should be formated"""
     assert options is not None
 
     if options.dryrun:
-        logging.info("Would execute mkfs.vfat -F 16 %s now.", device)
+        logging.info("Would execute mkfs.vfat %s now.", device)
         return 0
 
-    logging.info("Formating partition with fat16 filesystem")
-    logging.debug("mkfs.vfat -F 16 %s", device)
-    proc = subprocess.Popen(["mkfs.vfat", "-n", "GRML", "-F", "16", device])
+    logging.info("Formating partition with vfat filesystem")
+    logging.debug("mkfs.vfat %s", device)
+    proc = subprocess.Popen(["mkfs.vfat", "-n", "GRML", device])
     proc.wait()
     if proc.returncode != 0:
         raise CriticalException("error executing mkfs.vfat")
@@ -681,7 +681,7 @@ def install_syslinux(device):
     proc.wait()
     if proc.returncode != 0:
         raise CriticalException(
-            "Error executing syslinux (either try --fat16 or use grub?)"
+            "Error executing syslinux (either try --format or use grub?)"
         )
 
 
@@ -948,7 +948,7 @@ def check_for_usbdevice(device):
 
 
 def check_for_fat(partition):
-    """Check whether specified partition is a valid VFAT/FAT16 filesystem
+    """Check whether specified partition is a valid VFAT filesystem
 
     @partition: device name of partition"""
 
@@ -969,8 +969,8 @@ def check_for_fat(partition):
 
         if filesystem != "vfat":
             raise CriticalException(
-                "Partition %s does not contain a FAT16 filesystem. "
-                "(Use --fat16 or run mkfs.vfat %s)" % (partition, partition)
+                "Partition %s does not contain a VFAT filesystem. "
+                "(Use --format or run mkfs.vfat %s)" % (partition, partition)
             )
 
     except OSError:
@@ -1892,18 +1892,18 @@ def handle_vfat(device):
     assert options is not None
 
     # make sure we have mkfs.vfat available
-    if options.fat16:
+    if options.format:
         if not which("mkfs.vfat") and not options.copyonly and not options.dryrun:
             logging.critical("Sorry, mkfs.vfat not available. Exiting.")
             logging.critical("Please make sure to install dosfstools.")
             sys.exit(1)
 
         if options.force:
-            print("Forcing mkfs.fat16 on %s as requested via option --force." % device)
+            print("Forcing mkfs.vfat on %s as requested via option --force." % device)
         else:
             # make sure the user is aware of what he is doing
             f = input(
-                "Are you sure you want to format the specified partition with fat16? y/N "
+                "Are you sure you want to format the specified partition with vfat? y/N "
             )
             if f == "y" or f == "Y":
                 logging.info(
@@ -1912,7 +1912,7 @@ def handle_vfat(device):
             else:
                 sys.exit(1)
         try:
-            mkfs_fat16(device)
+            mkfs_vfat(device)
         except CriticalException as error:
             logging.critical("Execution failed: %s", error)
             sys.exit(1)
